@@ -75,12 +75,19 @@
             
             <div class="w-full text-center mb-2">
                 <h2 class="text-base sm:text-lg font-bold text-gray-700">เล็งเลขไหนไว้ กดเลือกเลย!</h2>
+                
+                <!-- กล่องอธิบายกติกาใหม่ -->
+                <div class="mt-2 mb-3 p-2 bg-yellow-50 border border-yellow-300 rounded-xl text-sm shadow-sm text-center">
+                    <p class="text-gray-800 font-bold mb-1">🏆 ทายถูกรับรางวัล <span class="text-green-600 font-black text-lg">25 เท่า</span> ของเงินเดิมพัน!</p>
+                    <p class="text-gray-600 text-xs sm:text-sm">💡 <span class="text-blue-600 font-bold">เลือกได้หลายเลข</span> และสามารถ <span class="text-blue-600 font-bold">กดซ้ำเลขเดิม</span> เพื่อเพิ่มจำนวนครั้งที่ทายได้</p>
+                </div>
             </div>
 
             <!-- ช่องใส่เงินเดิมพัน -->
             <div class="mb-3 w-full max-w-sm flex flex-col items-center bg-gray-100 p-2 rounded-xl border border-gray-200 shadow-inner">
                 <div class="flex items-center justify-between w-full mb-1">
-                    <label for="betInput" class="text-xs sm:text-sm font-bold text-gray-700 pl-2">เดิมพันต่อเลข (฿):</label>
+                    <!-- เปลี่ยนคำอธิบายเล็กน้อยให้เข้ากับการกดซ้ำ -->
+                    <label for="betInput" class="text-xs sm:text-sm font-bold text-gray-700 pl-2">เดิมพันต่อครั้ง (฿):</label>
                     <input type="number" id="betInput" min="1" placeholder="ระบุเงิน" class="w-20 sm:w-24 px-2 py-1 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-center font-bold text-sm sm:text-base text-blue-700">
                 </div>
                 <p class="text-[10px] text-red-500 font-semibold w-full text-left pl-2">* จำเป็นต้องระบุเงินเดิมพันก่อน (ใส่จำนวนเงินได้ตามต้องการ)</p>
@@ -91,8 +98,14 @@
                 <!-- ปุ่มจะถูกสร้างอัตโนมัติด้วย JavaScript -->
             </div>
 
-            <!-- ปุ่มยืนยัน -->
-            <div class="w-full mt-4 mb-1 flex justify-center">
+            <!-- ปุ่มยืนยัน สุ่ม และ ล้าง -->
+            <div class="w-full mt-4 mb-1 flex flex-wrap justify-center items-center gap-2 sm:gap-3">
+                <button id="clearBtn" class="hidden bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 sm:px-6 rounded-full shadow-sm transition-all transform hover:scale-105 text-sm sm:text-base">
+                    ล้าง
+                </button>
+                <button id="randomPickBtn" class="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-300 font-bold py-2 px-4 sm:px-6 rounded-full shadow-sm transition-all transform hover:scale-105 text-sm sm:text-base flex items-center">
+                    🎲 สุ่มเลข
+                </button>
                 <button id="confirmBtn" disabled class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center space-x-2 text-sm sm:text-base">
                     <span id="confirmBtnText">ยืนยันการทาย</span>
                     <span id="selectedCountBadge" class="bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs font-black hidden">0</span>
@@ -120,7 +133,9 @@
         document.addEventListener("DOMContentLoaded", () => {
             let secretNumber = generateSecretNumber();
             let isWaitingForNextRound = false; 
-            let selectedNumbers = new Set();
+            
+            // ใช้ Map แทน Set เพื่อให้สามารถนับจำนวนครั้งที่ทายในแต่ละเลขได้
+            let selectedNumbers = new Map();
             
             let stats = {
                 total: 0,
@@ -151,9 +166,13 @@
             const betInput = document.getElementById("betInput");
             const totalCostBadge = document.getElementById("totalCostBadge");
             const confirmBtn = document.getElementById("confirmBtn");
+            const clearBtn = document.getElementById("clearBtn");
+            const randomPickBtn = document.getElementById("randomPickBtn");
             const selectedCountBadge = document.getElementById("selectedCountBadge");
 
             confirmBtn.addEventListener("click", submitGuesses);
+            clearBtn.addEventListener("click", clearSelections);
+            randomPickBtn.addEventListener("click", pickRandomNumber);
             betInput.addEventListener("input", updateConfirmButtonUI);
 
             function generateSecretNumber() {
@@ -169,9 +188,15 @@
                 for (let i = 0; i < 100; i++) {
                     const btn = document.createElement("button");
                     btn.id = `btn-num-${i}`;
-                    btn.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-white border border-gray-300 shadow-sm hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 text-gray-700 focus:outline-none";
-                    btn.innerText = formatTwoDigits(i);
-                    btn.addEventListener("click", () => toggleSelection(i, btn));
+                    // ปรับโครงสร้างปุ่มให้มี ป้าย (Badge) นับจำนวนครั้งมุมขวาบน
+                    btn.className = "relative aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-white border border-gray-300 shadow-sm hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 text-gray-700 focus:outline-none";
+                    
+                    btn.innerHTML = `
+                        <span>${formatTwoDigits(i)}</span>
+                        <span id="badge-num-${i}" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full hidden shadow-sm border border-white"></span>
+                    `;
+                    
+                    btn.addEventListener("click", () => addSelection(i, btn));
                     numberGrid.appendChild(btn);
                 }
             }
@@ -198,18 +223,65 @@
                 }
             }
 
+            function clearSelections() {
+                if (isWaitingForNextRound) return;
+                selectedNumbers.clear();
+                initGameGrid();
+                updateConfirmButtonUI();
+            }
+
+            function pickRandomNumber() {
+                if (isWaitingForNextRound) return;
+                // สุ่มเลข 0-99
+                const randomNum = Math.floor(Math.random() * 100);
+                const btn = document.getElementById(`btn-num-${randomNum}`);
+                if (btn) {
+                    // นำเลขที่สุ่มได้ไปเพิ่มในกระดาน
+                    addSelection(randomNum, btn);
+                }
+            }
+
+            // ฟังก์ชันเพิ่มจำนวนครั้งที่ทายในเลขเดิม
+            function addSelection(guessedNumber, btnElement) {
+                if (isWaitingForNextRound) return;
+
+                let count = selectedNumbers.get(guessedNumber) || 0;
+                count++;
+                selectedNumbers.set(guessedNumber, count);
+
+                btnElement.className = "relative aspect-square flex items-center justify-center text-xs sm:text-sm font-bold rounded-lg bg-blue-500 text-white border-2 border-blue-700 shadow-md scale-105 z-10 transition-all";
+                
+                // อัปเดตและแสดง Badge นับจำนวนครั้ง
+                const badge = document.getElementById(`badge-num-${guessedNumber}`);
+                badge.innerText = `x${count}`;
+                badge.classList.remove("hidden");
+
+                updateConfirmButtonUI();
+            }
+
             function updateConfirmButtonUI() {
                 let betAmount = parseInt(betInput.value) || 0;
                 const btnText = document.getElementById("confirmBtnText");
                 
-                if (selectedNumbers.size > 0 && betAmount > 0) {
+                // คำนวณจำนวนครั้งที่ทายรวมทั้งหมด
+                let totalBets = 0;
+                selectedNumbers.forEach(count => totalBets += count);
+                
+                // แสดง/ซ่อน ปุ่มล้างการเลือก
+                if (totalBets > 0) {
+                    clearBtn.classList.remove("hidden");
+                } else {
+                    clearBtn.classList.add("hidden");
+                }
+
+                if (totalBets > 0 && betAmount > 0) {
                     confirmBtn.disabled = false;
                     btnText.innerText = "ยืนยันการทาย";
                     selectedCountBadge.classList.remove("hidden");
-                    selectedCountBadge.innerText = selectedNumbers.size;
+                    selectedCountBadge.innerText = totalBets;
                     totalCostBadge.classList.remove("hidden");
-                    totalCostBadge.innerText = `฿${selectedNumbers.size * betAmount}`;
-                } else if (selectedNumbers.size > 0 && betAmount <= 0) {
+                    totalCostBadge.innerText = `฿${totalBets * betAmount}`;
+                } else if (totalBets > 0 && betAmount <= 0) {
                     confirmBtn.disabled = true;
                     btnText.innerText = "โปรดระบุเงินเดิมพัน";
                     selectedCountBadge.classList.add("hidden");
@@ -222,19 +294,6 @@
                 }
             }
 
-            function toggleSelection(guessedNumber, btnElement) {
-                if (isWaitingForNextRound) return;
-
-                if (selectedNumbers.has(guessedNumber)) {
-                    selectedNumbers.delete(guessedNumber);
-                    btnElement.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-white border border-gray-300 shadow-sm hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 text-gray-700 focus:outline-none";
-                } else {
-                    selectedNumbers.add(guessedNumber);
-                    btnElement.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-bold rounded-lg bg-blue-500 text-white border-2 border-blue-700 shadow-md scale-105 z-10 transition-all";
-                }
-                updateConfirmButtonUI();
-            }
-
             function submitGuesses() {
                 if (isWaitingForNextRound || selectedNumbers.size === 0) return;
 
@@ -244,53 +303,65 @@
                     betInput.value = 1;
                 }
                 
+                let totalBets = 0;
+                let correctGuesses = 0;
+                
+                // คำนวณยอดทายรวม และยอดทายถูก (เผื่อกดซ้ำเลขที่ถูกหลายครั้ง)
+                selectedNumbers.forEach((count, num) => {
+                    totalBets += count;
+                    if (num === secretNumber) {
+                        correctGuesses = count;
+                    }
+                });
+
                 isWaitingForNextRound = true;
                 confirmBtn.disabled = true;
+                clearBtn.disabled = true;
+                randomPickBtn.disabled = true;
                 betInput.disabled = true;
                 
-                const guessCount = selectedNumbers.size;
-                const isCorrect = selectedNumbers.has(secretNumber);
-                
-                const costThisRound = guessCount * betPerNumber;
+                const isCorrect = correctGuesses > 0;
+                const costThisRound = totalBets * betPerNumber;
                 let wonThisRound = 0;
                 
                 finance.spent += costThisRound;
                 
+                // คำนวณเงินรางวัล (จำนวนครั้งที่ทายเลขนั้นถูก x เงินเดิมพัน x 25 เท่า)
                 if (isCorrect) {
-                    wonThisRound = betPerNumber * 25; 
+                    wonThisRound = correctGuesses * betPerNumber * 25; 
                     finance.won += wonThisRound;
                 }
                 
                 finance.net = finance.won - finance.spent;
 
-                stats.total += guessCount;
+                stats.total += totalBets;
                 
                 drawStats[secretNumber]++;
                 updateDrawStatsUI(secretNumber);
                 
                 if (isCorrect) {
-                    stats.correct++;
-                    stats.wrong += (guessCount - 1);
+                    stats.correct += correctGuesses;
+                    stats.wrong += (totalBets - correctGuesses);
                 } else {
-                    stats.wrong += guessCount;
+                    stats.wrong += totalBets;
                 }
 
                 updateMainStatsUI();
-                highlightBoard(isCorrect);
-                showResult(secretNumber, isCorrect, guessCount, costThisRound, wonThisRound);
+                highlightBoard();
+                showResult(secretNumber, isCorrect, totalBets, correctGuesses, costThisRound, wonThisRound);
             }
             
-            function highlightBoard(userWon) {
+            function highlightBoard() {
                 for (let i = 0; i < 100; i++) {
                     const btn = document.getElementById(`btn-num-${i}`);
                     if (!btn) continue;
                     
                     if (i === secretNumber) {
-                        btn.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-black rounded-lg bg-green-500 text-white border-2 border-green-700 shadow-xl scale-110 z-20 transition-all animate-pulse";
+                        btn.className = "relative aspect-square flex items-center justify-center text-xs sm:text-sm font-black rounded-lg bg-green-500 text-white border-2 border-green-700 shadow-xl scale-110 z-20 transition-all animate-pulse";
                     } else if (selectedNumbers.has(i)) {
-                        btn.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-red-100 text-red-400 border border-red-200 opacity-80 transition-all";
+                        btn.className = "relative aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-red-100 text-red-400 border border-red-200 opacity-80 transition-all";
                     } else {
-                        btn.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-white border border-gray-200 text-gray-400 opacity-40 transition-all";
+                        btn.className = "relative aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-white border border-gray-200 text-gray-400 opacity-40 transition-all";
                     }
                 }
             }
@@ -330,7 +401,7 @@
                 }, 1000);
             }
 
-            function showResult(actual, isCorrect, guessCount, costThisRound, wonThisRound) {
+            function showResult(actual, isCorrect, totalBets, correctGuesses, costThisRound, wonThisRound) {
                 resultSection.classList.remove("hidden");
                 
                 if (isCorrect) {
@@ -340,8 +411,9 @@
                         <p class="text-gray-700 text-sm">เลขที่ออกคือ <span class="text-2xl font-black text-green-700 mx-1">${formatTwoDigits(actual)}</span></p>
                         
                         <div class="my-2 p-2 bg-white/70 rounded-lg text-xs inline-block text-left shadow-sm border border-green-200">
+                            <div>🎯 ทายถูกทั้งหมด: <span class="font-bold text-blue-600">${correctGuesses} ครั้ง</span></div>
                             <div>💸 จ่ายรอบนี้: <span class="font-bold text-red-600">-${costThisRound.toLocaleString()} ฿</span></div>
-                            <div>💰 รับรางวัล: <span class="font-bold text-green-600">+${wonThisRound.toLocaleString()} ฿</span> (25 เท่า)</div>
+                            <div>💰 รับรางวัล: <span class="font-bold text-green-600">+${wonThisRound.toLocaleString()} ฿</span></div>
                             <div class="border-t border-green-300 mt-1 pt-1 font-bold text-sm">กำไรสุทธิรอบนี้: <span class="text-green-700">+${(wonThisRound - costThisRound).toLocaleString()} ฿</span></div>
                         </div>
                         <br>
@@ -373,9 +445,14 @@
                 secretNumber = generateSecretNumber();
                 isWaitingForNextRound = false;
                 selectedNumbers.clear();
+                
                 betInput.disabled = false;
+                clearBtn.disabled = false;
+                randomPickBtn.disabled = false;
+                
                 updateConfirmButtonUI();
                 resultSection.className = "hidden w-full mt-3 transition-all duration-300 transform scale-95 opacity-0";
+                
                 initGameGrid();
             }
 
