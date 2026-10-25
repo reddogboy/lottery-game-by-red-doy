@@ -1,0 +1,390 @@
+```html
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมทายตัวเลข 00-99</title>
+    <!-- โหลด Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- โหลด Google Fonts (Prompt) สำหรับภาษาไทย -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            min-height: 100vh;
+        }
+        
+        /* ซ่อนลูกศรขึ้นลงใน input type number */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-2 sm:p-4">
+
+    <div class="w-full max-w-lg bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-white/50">
+        
+        <!-- Header (บีบอัดความสูง) -->
+        <div class="bg-gradient-to-r from-orange-500 to-red-500 py-3 px-4 text-center text-white">
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-wide">🎲 เกมทายเลข 00-99</h1>
+            <p class="text-orange-100 mt-1 text-xs sm:text-sm">ระบบสุ่มตัวเลขไว้แล้ว ลองทายดูสิว่าเลขอะไร!</p>
+        </div>
+
+        <!-- Dashboard สถิติ (บีบช่องว่างและลดขนาด) -->
+        <div class="flex flex-col border-b border-gray-100">
+            <!-- สถิติการทาย -->
+            <div class="grid grid-cols-3 gap-1.5 p-2 bg-gray-50 text-center">
+                <div class="p-1.5 rounded-lg bg-white shadow-sm border border-gray-100">
+                    <div class="text-[10px] sm:text-xs text-gray-500 font-semibold leading-tight">ทายทั้งหมด</div>
+                    <div id="totalVal" class="text-base sm:text-lg font-bold text-gray-800 leading-tight">0</div>
+                </div>
+                <div class="p-1.5 rounded-lg bg-green-50 shadow-sm border border-green-100">
+                    <div class="text-[10px] sm:text-xs text-green-600 font-semibold leading-tight">ทายถูก</div>
+                    <div id="correctVal" class="text-base sm:text-lg font-bold text-green-600 leading-tight">0</div>
+                </div>
+                <div class="p-1.5 rounded-lg bg-red-50 shadow-sm border border-red-100">
+                    <div class="text-[10px] sm:text-xs text-red-600 font-semibold leading-tight">ทายผิด</div>
+                    <div id="wrongVal" class="text-base sm:text-lg font-bold text-red-600 leading-tight">0</div>
+                </div>
+            </div>
+            <!-- สถิติการเงิน -->
+            <div class="grid grid-cols-3 gap-1.5 p-2 bg-white text-center shadow-inner">
+                <div class="p-1.5 rounded-lg bg-orange-50 shadow-sm border border-orange-100">
+                    <div class="text-[10px] sm:text-xs text-orange-600 font-semibold leading-tight">จ่ายสะสม</div>
+                    <div class="text-sm sm:text-base font-bold text-orange-700 leading-tight">฿<span id="totalSpentVal">0</span></div>
+                </div>
+                <div class="p-1.5 rounded-lg bg-teal-50 shadow-sm border border-teal-100">
+                    <div class="text-[10px] sm:text-xs text-teal-600 font-semibold leading-tight">รับสะสม</div>
+                    <div class="text-sm sm:text-base font-bold text-teal-700 leading-tight">฿<span id="totalWonVal">0</span></div>
+                </div>
+                <div class="p-1.5 rounded-lg bg-gray-50 shadow-sm border border-gray-200">
+                    <div class="text-[10px] sm:text-xs text-gray-600 font-semibold leading-tight">กำไร/ขาดทุน</div>
+                    <div id="netProfitVal" class="text-sm sm:text-base font-bold text-gray-700 leading-tight">฿0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- พื้นที่เล่นเกม -->
+        <div class="p-3 sm:p-4 flex flex-col items-center">
+            
+            <div class="w-full text-center mb-2">
+                <h2 class="text-base sm:text-lg font-bold text-gray-700">เล็งเลขไหนไว้ กดเลือกเลย!</h2>
+            </div>
+
+            <!-- ช่องใส่เงินเดิมพัน -->
+            <div class="mb-3 w-full max-w-sm flex flex-col items-center bg-gray-100 p-2 rounded-xl border border-gray-200 shadow-inner">
+                <div class="flex items-center justify-between w-full mb-1">
+                    <label for="betInput" class="text-xs sm:text-sm font-bold text-gray-700 pl-2">เดิมพันต่อเลข (฿):</label>
+                    <input type="number" id="betInput" min="1" placeholder="ระบุเงิน" class="w-20 sm:w-24 px-2 py-1 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-center font-bold text-sm sm:text-base text-blue-700">
+                </div>
+                <p class="text-[10px] text-red-500 font-semibold w-full text-left pl-2">* จำเป็นต้องระบุเงินเดิมพันก่อน (ใส่จำนวนเงินได้ตามต้องการ)</p>
+            </div>
+
+            <!-- Grid ปุ่ม 00-99 -->
+            <div id="numberGrid" class="grid grid-cols-10 gap-1 sm:gap-2 w-full max-w-lg mx-auto">
+                <!-- ปุ่มจะถูกสร้างอัตโนมัติด้วย JavaScript -->
+            </div>
+
+            <!-- ปุ่มยืนยัน -->
+            <div class="w-full mt-4 mb-1 flex justify-center">
+                <button id="confirmBtn" disabled class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center space-x-2 text-sm sm:text-base">
+                    <span id="confirmBtnText">ยืนยันการทาย</span>
+                    <span id="selectedCountBadge" class="bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs font-black hidden">0</span>
+                    <span id="totalCostBadge" class="bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-xs font-black hidden">฿0</span>
+                </button>
+            </div>
+
+            <!-- พื้นที่แสดงผลเฉลย -->
+            <div id="resultSection" class="hidden w-full mt-3 transition-all duration-300 transform scale-95 opacity-0">
+                <!-- Content จะถูกแทรกด้วย JavaScript -->
+            </div>
+        </div>
+
+        <!-- ส่วนแสดงสถิติความถี่ของเลขที่ออก -->
+        <div class="p-3 sm:p-4 bg-gray-50 border-t border-gray-200">
+            <h3 class="text-sm sm:text-md font-bold text-gray-700 text-center mb-3">📊 สถิติเลขที่เคยออกรางวัล</h3>
+            <div id="drawStatsGrid" class="grid grid-cols-10 gap-1 w-full max-w-lg mx-auto text-center">
+                <!-- สถิติจะถูกสร้างด้วย JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Script ควบคุมระบบเกม -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            let secretNumber = generateSecretNumber();
+            let isWaitingForNextRound = false; 
+            let selectedNumbers = new Set();
+            
+            let stats = {
+                total: 0,
+                correct: 0,
+                wrong: 0
+            };
+
+            let finance = {
+                spent: 0,
+                won: 0,
+                net: 0
+            };
+            
+            let drawStats = new Array(100).fill(0);
+
+            const numberGrid = document.getElementById("numberGrid");
+            const drawStatsGrid = document.getElementById("drawStatsGrid");
+            const resultSection = document.getElementById("resultSection");
+            
+            const totalEl = document.getElementById("totalVal");
+            const correctEl = document.getElementById("correctVal");
+            const wrongEl = document.getElementById("wrongVal");
+
+            const spentEl = document.getElementById("totalSpentVal");
+            const wonEl = document.getElementById("totalWonVal");
+            const netEl = document.getElementById("netProfitVal");
+            
+            const betInput = document.getElementById("betInput");
+            const totalCostBadge = document.getElementById("totalCostBadge");
+            const confirmBtn = document.getElementById("confirmBtn");
+            const selectedCountBadge = document.getElementById("selectedCountBadge");
+
+            confirmBtn.addEventListener("click", submitGuesses);
+            betInput.addEventListener("input", updateConfirmButtonUI);
+
+            function generateSecretNumber() {
+                return Math.floor(Math.random() * 100);
+            }
+
+            function formatTwoDigits(num) {
+                return num.toString().padStart(2, '0');
+            }
+
+            function initGameGrid() {
+                numberGrid.innerHTML = '';
+                for (let i = 0; i < 100; i++) {
+                    const btn = document.createElement("button");
+                    btn.id = `btn-num-${i}`;
+                    btn.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-white border border-gray-300 shadow-sm hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 text-gray-700 focus:outline-none";
+                    btn.innerText = formatTwoDigits(i);
+                    btn.addEventListener("click", () => toggleSelection(i, btn));
+                    numberGrid.appendChild(btn);
+                }
+            }
+
+            function initDrawStatsGrid() {
+                drawStatsGrid.innerHTML = '';
+                for (let i = 0; i < 100; i++) {
+                    const cell = document.createElement("div");
+                    cell.id = `stat-cell-${i}`;
+                    cell.className = "flex flex-col items-center justify-center py-1 border rounded bg-white text-[9px] sm:text-[10px] transition-colors duration-300";
+                    
+                    const numLabel = document.createElement("span");
+                    numLabel.className = "text-gray-400";
+                    numLabel.innerText = formatTwoDigits(i);
+                    
+                    const countLabel = document.createElement("span");
+                    countLabel.id = `stat-count-${i}`;
+                    countLabel.className = "font-bold text-gray-300";
+                    countLabel.innerText = "0";
+
+                    cell.appendChild(numLabel);
+                    cell.appendChild(countLabel);
+                    drawStatsGrid.appendChild(cell);
+                }
+            }
+
+            function updateConfirmButtonUI() {
+                let betAmount = parseInt(betInput.value) || 0;
+                const btnText = document.getElementById("confirmBtnText");
+                
+                if (selectedNumbers.size > 0 && betAmount > 0) {
+                    confirmBtn.disabled = false;
+                    btnText.innerText = "ยืนยันการทาย";
+                    selectedCountBadge.classList.remove("hidden");
+                    selectedCountBadge.innerText = selectedNumbers.size;
+                    totalCostBadge.classList.remove("hidden");
+                    totalCostBadge.innerText = `฿${selectedNumbers.size * betAmount}`;
+                } else if (selectedNumbers.size > 0 && betAmount <= 0) {
+                    confirmBtn.disabled = true;
+                    btnText.innerText = "โปรดระบุเงินเดิมพัน";
+                    selectedCountBadge.classList.add("hidden");
+                    totalCostBadge.classList.add("hidden");
+                } else {
+                    confirmBtn.disabled = true;
+                    btnText.innerText = "ยืนยันการทาย";
+                    selectedCountBadge.classList.add("hidden");
+                    totalCostBadge.classList.add("hidden");
+                }
+            }
+
+            function toggleSelection(guessedNumber, btnElement) {
+                if (isWaitingForNextRound) return;
+
+                if (selectedNumbers.has(guessedNumber)) {
+                    selectedNumbers.delete(guessedNumber);
+                    btnElement.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-white border border-gray-300 shadow-sm hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 text-gray-700 focus:outline-none";
+                } else {
+                    selectedNumbers.add(guessedNumber);
+                    btnElement.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-bold rounded-lg bg-blue-500 text-white border-2 border-blue-700 shadow-md scale-105 z-10 transition-all";
+                }
+                updateConfirmButtonUI();
+            }
+
+            function submitGuesses() {
+                if (isWaitingForNextRound || selectedNumbers.size === 0) return;
+
+                let betPerNumber = parseInt(betInput.value) || 0;
+                if (betPerNumber < 1) {
+                    betPerNumber = 1;
+                    betInput.value = 1;
+                }
+                
+                isWaitingForNextRound = true;
+                confirmBtn.disabled = true;
+                betInput.disabled = true;
+                
+                const guessCount = selectedNumbers.size;
+                const isCorrect = selectedNumbers.has(secretNumber);
+                
+                const costThisRound = guessCount * betPerNumber;
+                let wonThisRound = 0;
+                
+                finance.spent += costThisRound;
+                
+                if (isCorrect) {
+                    wonThisRound = betPerNumber * 25; 
+                    finance.won += wonThisRound;
+                }
+                
+                finance.net = finance.won - finance.spent;
+
+                stats.total += guessCount;
+                
+                drawStats[secretNumber]++;
+                updateDrawStatsUI(secretNumber);
+                
+                if (isCorrect) {
+                    stats.correct++;
+                    stats.wrong += (guessCount - 1);
+                } else {
+                    stats.wrong += guessCount;
+                }
+
+                updateMainStatsUI();
+                highlightBoard(isCorrect);
+                showResult(secretNumber, isCorrect, guessCount, costThisRound, wonThisRound);
+            }
+            
+            function highlightBoard(userWon) {
+                for (let i = 0; i < 100; i++) {
+                    const btn = document.getElementById(`btn-num-${i}`);
+                    if (!btn) continue;
+                    
+                    if (i === secretNumber) {
+                        btn.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-black rounded-lg bg-green-500 text-white border-2 border-green-700 shadow-xl scale-110 z-20 transition-all animate-pulse";
+                    } else if (selectedNumbers.has(i)) {
+                        btn.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-red-100 text-red-400 border border-red-200 opacity-80 transition-all";
+                    } else {
+                        btn.className = "aspect-square flex items-center justify-center text-xs sm:text-sm font-semibold rounded-lg bg-white border border-gray-200 text-gray-400 opacity-40 transition-all";
+                    }
+                }
+            }
+
+            function updateMainStatsUI() {
+                totalEl.innerText = stats.total;
+                correctEl.innerText = stats.correct;
+                wrongEl.innerText = stats.wrong;
+
+                spentEl.innerText = finance.spent.toLocaleString();
+                wonEl.innerText = finance.won.toLocaleString();
+                
+                const netElement = document.getElementById("netProfitVal");
+                if (finance.net > 0) {
+                    netElement.innerText = `+฿${finance.net.toLocaleString()}`;
+                    netElement.className = "text-sm sm:text-base font-black text-green-600 leading-tight";
+                } else if (finance.net < 0) {
+                    netElement.innerText = `-฿${Math.abs(finance.net).toLocaleString()}`;
+                    netElement.className = "text-sm sm:text-base font-black text-red-600 leading-tight";
+                } else {
+                    netElement.innerText = `฿0`;
+                    netElement.className = "text-sm sm:text-base font-bold text-gray-700 leading-tight";
+                }
+            }
+
+            function updateDrawStatsUI(winningNum) {
+                const countLabel = document.getElementById(`stat-count-${winningNum}`);
+                const cell = document.getElementById(`stat-cell-${winningNum}`);
+                
+                countLabel.innerText = drawStats[winningNum];
+                countLabel.className = "font-bold text-orange-600";
+                
+                cell.classList.add("bg-orange-100", "border-orange-300");
+                setTimeout(() => {
+                    cell.classList.remove("bg-orange-100", "border-orange-300");
+                    cell.classList.add("bg-orange-50");
+                }, 1000);
+            }
+
+            function showResult(actual, isCorrect, guessCount, costThisRound, wonThisRound) {
+                resultSection.classList.remove("hidden");
+                
+                if (isCorrect) {
+                    resultSection.className = `mt-3 p-3 rounded-xl border-2 shadow-md transition-all duration-300 transform scale-100 opacity-100 bg-green-100 border-green-400 text-green-900 text-center`;
+                    resultSection.innerHTML = `
+                        <h3 class="text-lg font-bold mb-1">🎉 ปิ๊งป่อง! คุณทายถูก</h3>
+                        <p class="text-gray-700 text-sm">เลขที่ออกคือ <span class="text-2xl font-black text-green-700 mx-1">${formatTwoDigits(actual)}</span></p>
+                        
+                        <div class="my-2 p-2 bg-white/70 rounded-lg text-xs inline-block text-left shadow-sm border border-green-200">
+                            <div>💸 จ่ายรอบนี้: <span class="font-bold text-red-600">-${costThisRound.toLocaleString()} ฿</span></div>
+                            <div>💰 รับรางวัล: <span class="font-bold text-green-600">+${wonThisRound.toLocaleString()} ฿</span> (25 เท่า)</div>
+                            <div class="border-t border-green-300 mt-1 pt-1 font-bold text-sm">กำไรสุทธิรอบนี้: <span class="text-green-700">+${(wonThisRound - costThisRound).toLocaleString()} ฿</span></div>
+                        </div>
+                        <br>
+                        <button id="nextRoundBtn" class="mt-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-full shadow-md transition-all transform hover:scale-105 text-sm">เริ่มเล่นรอบถัดไป</button>
+                    `;
+                } else {
+                    resultSection.className = `mt-3 p-3 rounded-xl border-2 shadow-md transition-all duration-300 transform scale-100 opacity-100 bg-red-100 border-red-300 text-red-900 text-center`;
+                    resultSection.innerHTML = `
+                        <h3 class="text-lg font-bold mb-1">😢 น่าเสียดาย! ทายผิดหมดเลย</h3>
+                        <p class="text-gray-700 text-sm">เลขที่ออกคือ <span class="text-2xl font-black text-red-700 mx-1">${formatTwoDigits(actual)}</span></p>
+                        
+                        <div class="my-2 p-2 bg-white/70 rounded-lg text-xs inline-block text-left shadow-sm border border-red-200">
+                            <div>💸 จ่ายรอบนี้: <span class="font-bold text-red-600">-${costThisRound.toLocaleString()} ฿</span></div>
+                            <div class="border-t border-red-200 mt-1 pt-1 font-bold text-sm">ขาดทุนรอบนี้: <span class="text-red-700">-${costThisRound.toLocaleString()} ฿</span></div>
+                        </div>
+                        <br>
+                        <button id="nextRoundBtn" class="mt-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full shadow-md transition-all transform hover:scale-105 text-sm">เริ่มเล่นรอบถัดไป</button>
+                    `;
+                }
+
+                document.getElementById("nextRoundBtn").addEventListener("click", startNewRound);
+                
+                setTimeout(() => {
+                    document.getElementById("nextRoundBtn").scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
+            }
+
+            function startNewRound() {
+                secretNumber = generateSecretNumber();
+                isWaitingForNextRound = false;
+                selectedNumbers.clear();
+                betInput.disabled = false;
+                updateConfirmButtonUI();
+                resultSection.className = "hidden w-full mt-3 transition-all duration-300 transform scale-95 opacity-0";
+                initGameGrid();
+            }
+
+            initGameGrid();
+            initDrawStatsGrid();
+        });
+    </script>
+</body>
+</html>
+
+```
